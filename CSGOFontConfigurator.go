@@ -17,6 +17,7 @@ import (
 type MyMainWindow struct {
 	*walk.MainWindow
 	prevFilePath string
+	AppPath      string
 }
 
 func main() {
@@ -39,6 +40,7 @@ func main() {
 	// FIXME: walk.ValidationErrorEffect, _ = walk.NewBorderGlowEffect(walk.RGB(255, 0, 0))
 
 	mw := new(MyMainWindow)
+	mw.AppPath, _ = filepath.Abs("./")
 	var LineEditPath *walk.LineEdit
 	var ComboBoxFont *walk.ComboBox
 	var NumberEditPixelSize *walk.NumberEdit
@@ -143,7 +145,6 @@ func main() {
 					PushButton{
 						Text: "Apply",
 						OnClicked: func() {
-
 							fontfile := filepath.Join(fontsDir, Config.File)
 							data, err := ioutil.ReadFile(fontfile)
 							if err != nil {
@@ -169,8 +170,7 @@ func main() {
 								panic(err)
 							}
 
-							// Save Config FIXME: wrong save location
-							err = cfg.SaveConfigFile(Config)
+							err = cfg.SaveConfigFile(mw.AppPath, Config)
 							if err != nil {
 								walk.MsgBox(mw, "Error", err.Error(), walk.MsgBoxOK|walk.MsgBoxIconError)
 								panic(err)
@@ -191,10 +191,9 @@ func main() {
 	}.Create()); err != nil {
 		panic(err)
 	}
-	mw.Run() // https://github.com/lxn/walk/issues/103#issuecomment-278243090
 
 	LineEditPath.SetText(Config.Path)
-	ComboBoxFont.SetText(Config.File)
+	mw.Run() // https://github.com/lxn/walk/issues/103#issuecomment-278243090
 }
 
 func (mw *MyMainWindow) openFileExplorer() (FilePath string, err error) {
@@ -210,6 +209,7 @@ func (mw *MyMainWindow) openFileExplorer() (FilePath string, err error) {
 	} else if !ok {
 		return "", nil
 	}
+
 	mw.prevFilePath = dlg.FilePath
 
 	return dlg.FilePath, nil

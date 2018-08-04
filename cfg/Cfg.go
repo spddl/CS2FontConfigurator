@@ -2,12 +2,11 @@ package cfg
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
-	"errors"
-
-
+	"path/filepath"
 )
 
 type Config struct { // https://mholt.github.io/json-to-go/
@@ -60,12 +59,12 @@ func LoadConfigFile() Config {
 }
 
 // SaveConfigFile Speichert die Config
-func SaveConfigFile(jsonBlob Config) error { // https://github.com/spddl/csgo-reporter/blob/master/Config/Config.go#L147
+func SaveConfigFile(AppPath string, jsonBlob Config) error { // https://github.com/spddl/csgo-reporter/blob/master/Config/Config.go#L147
 	bytes, err := json.Marshal(jsonBlob)
 	if err != nil {
 		return errors.New("Config konnte nicht gespeichert werden (json error)")
 	} else {
-		err = ioutil.WriteFile("./config.json", bytes, 0644)
+		err = ioutil.WriteFile(filepath.Join(AppPath, "config.json"), bytes, 0644)
 		if err == nil {
 			return nil
 		} else {
