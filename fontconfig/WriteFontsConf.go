@@ -81,7 +81,7 @@ func WriteFontsConf(fontsDir string, c cfg.Config) error {
 				Attrname: "embeddedbitmap",
 				Attrmode: "assign",
 				Sbool: &Sbool{
-					Value: "false",
+					Value: c.EmbeddedBitmap,
 				},
 			},
 		},
@@ -91,7 +91,7 @@ func WriteFontsConf(fontsDir string, c cfg.Config) error {
 				Attrname: "prefer_outline",
 				Attrmode: "assign",
 				Sbool: &Sbool{
-					Value: "true",
+					Value: c.PreferOutline,
 				},
 			},
 		},
@@ -101,7 +101,7 @@ func WriteFontsConf(fontsDir string, c cfg.Config) error {
 				Attrname: "do_substitutions",
 				Attrmode: "assign",
 				Sbool: &Sbool{
-					Value: "true",
+					Value: c.DoSubstitutions,
 				},
 			},
 		},
@@ -111,7 +111,7 @@ func WriteFontsConf(fontsDir string, c cfg.Config) error {
 				Attrname: "bitmap_monospace",
 				Attrmode: "assign",
 				Sbool: &Sbool{
-					Value: "false",
+					Value: c.BitmapMonospace,
 				},
 			},
 		},
@@ -121,17 +121,7 @@ func WriteFontsConf(fontsDir string, c cfg.Config) error {
 				Attrname: "force_autohint",
 				Attrmode: "assign",
 				Sbool: &Sbool{
-					Value: "false",
-				},
-			},
-		},
-		{
-			Attrtarget: "pattern",
-			Sedit: &Sedit{
-				Attrname: "force_autohint",
-				Attrmode: "assign",
-				Sbool: &Sbool{
-					Value: "false",
+					Value: c.ForceAutohint,
 				},
 			},
 		},
@@ -141,7 +131,7 @@ func WriteFontsConf(fontsDir string, c cfg.Config) error {
 				Attrname: "dpi",
 				Attrmode: "assign",
 				Sdouble: &Sdouble{
-					Value: "96",
+					Value: c.Dpi,
 				},
 			},
 		},
@@ -151,7 +141,7 @@ func WriteFontsConf(fontsDir string, c cfg.Config) error {
 				Attrname: "qt_use_subpixel_positioning",
 				Attrmode: "assign",
 				Sbool: &Sbool{
-					Value: "false",
+					Value: c.QtUseSubpixelPositioning,
 				},
 			},
 		},

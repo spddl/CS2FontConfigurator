@@ -10,10 +10,17 @@ import (
 )
 
 type Config struct { // https://mholt.github.io/json-to-go/
-	Path      string  `json:"path"`
-	PixelSize float64 `json:"pixelsize"`
-	Font      string  `json:"Font"`
-	File      string  `json:"File"`
+	Path string `json:"path"`
+	// PixelSize                float64 `json:"pixelsize"`
+	Font                     string  `json:"font"`
+	File                     string  `json:"file"`
+	EmbeddedBitmap           bool    `json:"embeddedbitmap"`
+	PreferOutline            bool    `json:"preferoutline"`
+	DoSubstitutions          bool    `json:"dosubstitutions"`
+	BitmapMonospace          bool    `json:"bitmapmonospace"`
+	ForceAutohint            bool    `json:"forceautohint"`
+	QtUseSubpixelPositioning bool    `json:"qtusesubpixelpositioning"`
+	Dpi                      float64 `json:"dpi"`
 }
 
 func Exists(path string) (bool, error) {
@@ -77,8 +84,15 @@ func SaveConfigFile(AppPath string, jsonBlob Config) error { // https://github.c
 func NewConfig() Config {
 	jsonBlob := json.RawMessage(`{
 		"path": "",
-		"pixelsize": 1.2,
-		"font": ""
+		"font": "",
+		"file": "",
+		"embeddedbitmap": false,
+		"preferoutline": true,
+		"dosubstitutions": true,
+		"bitmapmonospace": false,
+		"forceautohint": false,
+		"qtusesubpixelpositioning": false,
+		"dpi": 96
 	}`)
 
 	var jsontype Config

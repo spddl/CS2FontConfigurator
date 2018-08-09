@@ -10,8 +10,6 @@ import (
 )
 
 func WriteSpddlConf(c cfg.Config) error {
-	// file, _ := helper.FileAndExt(c.Font)
-
 	fontconfig := &Sfontconfig{}
 	fontconfig.Smatch = []Smatch{
 		{

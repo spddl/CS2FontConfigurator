@@ -61,12 +61,12 @@ type Sedit struct {
 
 type Sbool struct {
 	XMLName xml.Name `xml:"bool,omitempty"`
-	Value   string   `xml:",chardata"`
+	Value   bool     `xml:",chardata"`
 }
 
 type Sdouble struct {
 	XMLName xml.Name `xml:"double,omitempty"`
-	Value   string   `xml:",chardata"`
+	Value   float64  `xml:",chardata"`
 }
 
 type Sstring struct {
