@@ -9,7 +9,7 @@ import (
 )
 
 // FontData describes a font file and the various metadata associated with it.
-type FontData struct {
+type FontData struct { // https://github.com/ConradIrwin/font/blob/d797009a8098ca7f6c36a29d0c132a3d39bc4212/sfnt/table_name.go#L77
 	Name     string
 	Family   string
 	FileName string

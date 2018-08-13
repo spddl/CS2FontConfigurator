@@ -273,10 +273,8 @@ func main() {
 							if err != nil {
 								walk.MsgBox(mw, "Error Parse", err.Error(), walk.MsgBoxOK|walk.MsgBoxIconError)
 							}
-							// fmt.Println("Name", fontData.Name)         // Name AdobeHebrew-Italic
-							// fmt.Println("Family", fontData.Family)     // Family Adobe Hebrew
-							// fmt.Println("FileName", fontData.FileName) // FileName AdobeHebrew-Italic.otf
-							Config.Font = fontData.Name
+
+							Config.Font = fontData.Family
 
 							//
 							// https://www.freedesktop.org/software/fontconfig/fontconfig-user.html#AEN134
@@ -305,7 +303,7 @@ func main() {
 					PushButton{
 						Text: "Exit",
 						OnClicked: func() {
-							os.Exit(1)
+							os.Exit(0)
 						},
 					},
 				},
