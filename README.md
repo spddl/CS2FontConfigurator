@@ -1,25 +1,20 @@
-# CSGOFontConfigurator 💪
+# CS2FontConfigurator
 [![Downloads][1]][2] [![GitHub stars][3]][4]
 
-[1]: https://img.shields.io/github/downloads/spddl/CSGOFontConfigurator/total.svg
-[2]: https://github.com/spddl/CSGOFontConfigurator/releases "Downloads"
+[1]: https://img.shields.io/github/downloads/spddl/CS2FontConfigurator/total.svg
+[2]: https://github.com/spddl/CS2FontConfigurator/releases "Downloads"
 
-[3]: https://img.shields.io/github/stars/spddl/CSGOFontConfigurator.svg
-[4]: https://github.com/spddl/CSGOFontConfigurator/stargazers "GitHub stars"
+[3]: https://img.shields.io/github/stars/spddl/CS2FontConfigurator.svg
+[4]: https://github.com/spddl/CS2FontConfigurator/stargazers "GitHub stars"
 
-[![Twitter](https://img.shields.io/twitter/url/https/github.com/spddl/CSGOFontConfigurator.svg?style=social)](https://twitter.com/intent/tweet?text=Wow:&url=https%3A%2F%2Fgithub.com%2Fspddl%2FCSGOFontConfigurator)
+### [Download](https://github.com/spddl/CS2FontConfigurator/releases)
 
-### [Download](https://github.com/spddl/CSGOFontConfigurator/releases)
+Like CSGO, CS2 uses a [FontConfig](https://www.freedesktop.org/wiki/Software/fontconfig/), the difference is that Valve provides a preset file for CS2 that shows how fonts should be replaced.
+> core\panorama\fonts\conf.d\42-repl-global.conf
 
-Not all fonts work ingame and I do not know why :/
-TODO: more options & possibilities 🤞
+We use this advantage.
 
-![screenshot](https://i.imgur.com/UIVPky2.png)
+We only change this file and the first loaded `fonts.conf`, otherwise fonts installed in the user area under Windows will not be found.
+> csgo\panorama\fonts\fonts.conf
 
-### compile
-
-If you do not trust my exe, you can compile it yourself 
-- Download [golang](https://golang.org/dl/)
-- Clone the repo
-- and install the missing modules "go get xxx" 
-- and it build with "go build"
+![screenshot](https://i.imgur.com/rN2zzOh.png)
