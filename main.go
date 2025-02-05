@@ -139,7 +139,7 @@ func main() {
 						OnCurrentIndexChanged: func() {
 							font := fontslist[mw.cb.CurrentIndex()]
 
-							config.Font = font.Fontname
+							config.Font = font.Filename
 
 							var style walk.FontStyle
 							if strings.Contains(strings.ToLower(font.Fontname), "bold") || strings.Contains(strings.ToLower(font.Filename), "bold") {
@@ -269,11 +269,14 @@ func main() {
 	}
 
 	// selects the font from the config
-	mw.cb.SetCurrentIndex(0)
-	for i, v := range fontslist {
-		if v.Fontname == config.Font {
-			mw.cb.SetCurrentIndex(i)
-			break
+	if len(config.Font) == 0 {
+		mw.cb.SetCurrentIndex(0)
+	} else {
+		for i, v := range fontslist {
+			if v.Filename == config.Font {
+				mw.cb.SetCurrentIndex(i)
+				break
+			}
 		}
 	}
 
