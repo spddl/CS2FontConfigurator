@@ -11,6 +11,7 @@ import (
 type Config struct { // https://mholt.github.io/json-to-go/
 	Path      string  `json:"path"`
 	Font      string  `json:"font"`
+	FontFile  string  `json:"fontfile"`
 	Pixelsize float64 `json:"pixelsize"`
 	TestCase  string  `json:"TestCase"`
 }
@@ -62,6 +63,7 @@ func (c *Config) newConfig() {
 	jsonBlob := json.RawMessage(`{
 		"path": "",
 		"font": "",
+		"fontfile": "",
 		"pixelsize": 1.0,
 		"TestCase": "ABC 100 PLAY DUST II 98 in 4"
 	}`)
