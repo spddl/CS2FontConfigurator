@@ -4,33 +4,40 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
+	"slices"
 	"sort"
-	"unsafe"
+	"strings"
 
 	"github.com/tailscale/walk"
+
+	//lint:ignore ST1001 standard behavior tailscale/walk
 	. "github.com/tailscale/walk/declarative"
-	"github.com/tailscale/win"
-	"golang.org/x/sys/windows"
 )
 
 type MyMainWindow struct {
 	*walk.Dialog
+	cb      *walk.ComboBox
 	AppPath string
 }
 
 var (
-	config = new(Config)
-	mw     *MyMainWindow
-	DPI    int
-	model  *CustomFontModel
+	config    = new(Config)
+	mw        *MyMainWindow
+	fontslist []*Fontslist // Windows
 )
 
 func init() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	config.Init()
-	model = NewCustomFontModel()
+}
+
+type Fontslist struct {
+	Id       int
+	Dir      string
+	Name     string
+	Filename string
+	Fontname string
 }
 
 func main() {
@@ -46,14 +53,64 @@ func main() {
 	mw = new(MyMainWindow)
 	mw.AppPath, _ = filepath.Abs("./")
 
-	var ComboBoxWeight *walk.ComboBox
-	var LabelFontPreview *walk.Label
-	var NumberEditPixelSize *walk.NumberEdit
-	var CheckBoxCustomize *walk.CheckBox
-	var CompositeCustomize *walk.Composite
+	fontslist = []*Fontslist{}
+	for _, dir := range []string{
+		"C:\\Windows\\Fonts",
+		filepath.Join(os.Getenv("USERPROFILE"), "AppData", "Local", "Microsoft", "Windows", "Fonts"),
+	} {
+
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		for _, e := range entries {
+			filename := e.Name()
+
+			if filepath.Ext(filename) != ".ttf" && filepath.Ext(filename) != ".otf" {
+				continue
+			}
+
+			var fontname string = GetFontName(filepath.Join(dir, filename))
+			if fontname == "" {
+				continue
+			}
+
+			var name string
+			before, _, found := strings.Cut(fontname, " & ")
+			if found {
+				name = fmt.Sprintf("%s... (%s)", before, filename)
+			} else {
+				name = fmt.Sprintf("%s (%s)", fontname, filename)
+			}
+
+			fontslist = append(fontslist, &Fontslist{
+				Name:     name,
+				Dir:      dir,
+				Fontname: fontname,
+				Filename: filename,
+			})
+		}
+	}
+
+	sort.Slice(fontslist, func(i, j int) bool {
+		return fontslist[i].Fontname < fontslist[j].Fontname
+	})
+
+	fontslist = slices.CompactFunc(fontslist, func(b *Fontslist, a *Fontslist) bool {
+		return a.Name == b.Name
+	})
+
+	for i := range fontslist {
+		fontslist[i].Id = i
+	}
+
 	var GroupBoxSimpleSelection *walk.GroupBox
-	var tv *walk.TableView
 	var appIcon, _ = walk.NewIconFromResourceId(7)
+	var testfont *walk.Label
+	var testfontinput *walk.LineEdit
+	var defaultButton *walk.PushButton
+	var PixelsizeEdit *walk.NumberEdit
 
 	if err := (Dialog{
 		AssignTo: &mw.Dialog,
@@ -65,7 +122,7 @@ func main() {
 			GroupBox{
 				AssignTo: &GroupBoxSimpleSelection,
 				Layout: Grid{
-					Columns: 3,
+					Columns: 2,
 				},
 				Title: "Simple font selection",
 				Children: []Widget{
@@ -73,266 +130,61 @@ func main() {
 					Label{
 						Text: "Font:",
 					},
-					Label{
-						AssignTo: &LabelFontPreview,
-						Text:     "press Select",
-					},
-					PushButton{
-						Text: "Select",
-						OnClicked: func() {
-							name := [32]uint16{}
-							if config.Font != "" {
-								copy(name[:], windows.StringToUTF16(config.Font))
-							}
 
-							// https://learn.microsoft.com/en-us/windows/win32/api/commdlg/ns-commdlg-choosefonta
-							cfont := CHOOSEFONT{
-								HwndOwner: mw.Handle(),
-								LpLogFont: &win.LOGFONT{ // https://learn.microsoft.com/en-us/windows/win32/api/wingdi/ns-wingdi-logfontw
-									LfFaceName: name,
-									LfCharSet:  win.DEFAULT_CHARSET,
-								},
-								Flags:     CF_SCREENFONTS | CF_INITTOLOGFONTSTRUCT | CF_NOSCRIPTSEL | CF_FORCEFONTEXIST,
-								NFontType: SCREEN_FONTTYPE,
-							}
-							cfont.LStructSize = uint32(unsafe.Sizeof(cfont))
-							ChooseFontW(&cfont)
-
-							// Replace Font
-							config.Font = windows.UTF16ToString(cfont.LpLogFont.LfFaceName[:])
-
-							// Pixelsize
-							config.Pixelsize = float64(cfont.IPointSize / 10)
-							if cfont.IPointSize != 0 {
-								NumberEditPixelSize.SetValue(float64(cfont.IPointSize / 10))
-							}
-
-							// Weight
-							switch cfont.LpLogFont.LfWeight {
-							case 0:
-								// FW_DONTCARE
-							case 100, 200, 300:
-								config.Weight = WeightLight
-							case 400:
-								config.Weight = WeightRegular
-							case 500:
-								config.Weight = WeightMedium
-							case 600:
-								config.Weight = WeightDemibold
-							case 700:
-								config.Weight = WeightBold
-							case 800, 900:
-								config.Weight = WeightBlack
-							}
-							ComboBoxWeight.SetCurrentIndex(config.Weight)
-
-							LabelFontPreview.SetText(config.Font)
-
-							config.Default()
-							model.ResetRows()
-						},
-					},
-					Label{
-						Text: "PixelSize",
-					},
-					NumberEdit{
-						AssignTo:           &NumberEditPixelSize,
-						Value:              config.Pixelsize,
-						ColumnSpan:         2,
-						Suffix:             "px",
-						MinValue:           0,
-						SpinButtonsVisible: true,
-						OnValueChanged: func() {
-							config.Pixelsize = NumberEditPixelSize.Value()
-						},
-					},
-
-					Label{
-						Text: "Weight",
-					},
 					ComboBox{
-						AssignTo:      &ComboBoxWeight,
-						ColumnSpan:    2,
-						Model:         KnownWeight(),
+						AssignTo:      &mw.cb,
 						BindingMember: "Id",
 						DisplayMember: "Name",
+						Model:         fontslist,
 						OnCurrentIndexChanged: func() {
-							config.Weight = ComboBoxWeight.CurrentIndex()
-						},
-					},
-				},
-			},
+							font := fontslist[mw.cb.CurrentIndex()]
 
-			Composite{
-				Layout: HBox{MarginsZero: true},
-				Children: []Widget{
-					HSpacer{},
-					PushButton{
-						Text: "Options",
-						OnClicked: func() {
-							OpenOptions(mw)
-						},
-					},
-				},
-			},
+							config.Font = font.Fontname
 
-			Composite{ // https://github.com/tailscale/walk/tree/55ec69fff1171242ca677d7f083a962dcc51c875/examples/tableview
-				Layout: HBox{MarginsZero: true},
-				Children: []Widget{
-					CheckBox{
-						AssignTo: &CheckBoxCustomize,
-						Text:     "customize each font individually",
-						OnCheckStateChanged: func() {
-							config.Customize = CheckBoxCustomize.Checked()
-							mw.Synchronize(func() {
-								CompositeCustomize.SetVisible(config.Customize)
-								if config.Customize {
-									GroupBoxSimpleSelection.SetEnabled(false)
-									config.Default()
-									model.ResetRows()
-								} else {
-									GroupBoxSimpleSelection.SetEnabled(true)
-									mw.Dialog.SetSize(walk.Size{Width: 0, Height: 0})
-								}
-							})
-						},
-					},
-				},
-			},
-
-			Composite{
-				AssignTo: &CompositeCustomize,
-				Visible:  false,
-				Layout: VBox{
-					MarginsZero: true,
-				},
-				MinSize: Size{
-					Width:  200,
-					Height: 200,
-				},
-				Children: []Widget{
-
-					TableView{
-						AssignTo:            &tv,
-						AlternatingRowBG:    true,
-						ColumnsOrderable:    true,
-						MultiSelection:      true,
-						LastColumnStretched: true,
-						Columns: []TableViewColumn{
-							{
-								Title: "ValveFont",
-								Width: 150,
-							},
-							{
-								DataMember: "ReplaceFont",
-								Title:      "Replace",
-								Width:      150,
-							},
-							{
-								Title: "Weight",
-								Width: 70,
-								FormatFunc: func(value interface{}) string {
-									switch value.(int) {
-									case 0:
-										return "Light"
-									case 1:
-										return "Regular"
-									case 2:
-										return "Medium"
-									case 3:
-										return "Demibold"
-									case 4:
-										return "Bold"
-									case 5:
-										return "Black"
-									}
-									return ""
-								},
-							},
-							{
-								DataMember: "Pixelsize",
-								Title:      "PxSize",
-								Width:      50,
-								FormatFunc: func(value interface{}) string {
-									return fmt.Sprintf("%d", int(value.(float64)))
-								},
-							},
-							{
-								DataMember: "Dpi",
-								Title:      "DPI",
-								Width:      50,
-							},
-							{
-								DataMember: "PreferOutline",
-								Title:      "Outline",
-							},
-							{
-								Title: "DoSubstitutions",
-							},
-							{
-								Title: "BitmapMonospace",
-							},
-							{
-								Title: "ForceAutohint",
-							},
-							{
-								Title: "QtUseSubpixelPositioning",
-							},
-							{
-								Title: "EmbeddedBitmap",
-							},
-						},
-						Model: model,
-						OnItemActivated: func() {
-							i := tv.CurrentIndex()
-							newItem := &model.Items[i]
-							orgItem := *newItem
-							result := OpenCustomFontPtr(mw, newItem)
-
-							if result == 0 || result == 2 { // cancel
-								model.Items[i] = orgItem
-								return
-							} else {
-								model.PublishRowsChanged(0, len(model.Items)-1)
-								model.PublishRowsReset()
+							var style walk.FontStyle
+							if strings.Contains(strings.ToLower(font.Fontname), "bold") || strings.Contains(strings.ToLower(font.Filename), "bold") {
+								style |= walk.FontBold
 							}
+							if strings.Contains(strings.ToLower(font.Fontname), "italic") || strings.Contains(strings.ToLower(font.Filename), "italic") {
+								style |= walk.FontItalic
+							}
+							walkfont, err := walk.NewFont(font.Fontname, 20, style)
+							if err != nil {
+								log.Println(err)
+							}
+							testfont.SetFont(walkfont)
 						},
-						ContextMenuItems: []MenuItem{
-							Action{
-								Text: "&Add",
-								OnTriggered: func() {
-									trackLatest := tv.ItemVisible(len(model.Items)-1) && len(tv.SelectedIndexes()) <= 1
+					},
 
-									var newVal = &FontStruct{
-										ValveFont:   "Valve Font",
-										ReplaceFont: "Replace Font",
-									}
-									if ret := OpenCustomFontPtr(mw, newVal); ret == 1 {
-										model.Items = append(model.Items, *newVal)
-									}
+					Label{
+						Text: "Size (1 is Default):",
+					},
+					NumberEdit{
+						AssignTo:           &PixelsizeEdit,
+						MinValue:           0,
+						Value:              config.Pixelsize,
+						Decimals:           2,
+						Increment:          0.1,
+						SpinButtonsVisible: true,
+						OnValueChanged: func() {
+							config.Pixelsize = PixelsizeEdit.Value()
+						},
+					},
 
-									model.PublishRowsReset()
+					Label{
+						AssignTo:   &testfont,
+						Text:       config.TestCase,
+						ColumnSpan: 2,
+					},
 
-									if trackLatest {
-										tv.EnsureItemVisible(len(model.Items) - 1)
-									}
-								},
-							},
-							Action{
-								Text: "&Remove",
-								OnTriggered: func() {
-									indexes := tv.SelectedIndexes()
-									for i := len(indexes) - 1; i >= 0; i-- {
-										model.Items = append(model.Items[:indexes[i]], model.Items[indexes[i]+1:]...)
-
-									}
-
-									if len(indexes) != 0 {
-										model.PublishRowsChanged(indexes[0], len(model.Items)-1)
-										model.PublishRowsReset()
-									}
-								},
-							},
+					LineEdit{
+						AssignTo:   &testfontinput,
+						ColumnSpan: 2,
+						Text:       config.TestCase,
+						OnKeyUp: func(key walk.Key) {
+							testcase := testfontinput.Text()
+							testfont.SetText(testcase)
+							config.TestCase = testcase
 						},
 					},
 				},
@@ -344,33 +196,27 @@ func main() {
 				},
 				Children: []Widget{
 					PushButton{
-						Text: "Preview",
+						AssignTo: &defaultButton,
+						Text:     "Default",
+						Enabled:  false,
 						OnClicked: func() {
-							// create demo.html
-							createPreview(mw.AppPath)
-							// https://stackoverflow.com/a/12076082
-							exec.Command("rundll32.exe", []string{"url.dll,FileProtocolHandler", filepath.Join(mw.AppPath, "demo.htm")}...).Start()
+							backupFile := filepath.Join(config.Path, "game", "csgo", "panorama", "fonts", "fonts_backup.conf")
+							fontFile := filepath.Join(config.Path, "game", "csgo", "panorama", "fonts", "fonts.conf")
 
-						},
-					},
-
-					PushButton{
-						Text: "Default",
-						OnClicked: func() {
-							def := new(Config)
-							def.newConfig()
-							def.Path = config.Path
-							config = def
-
-							if err := WriteFontsConf(config); err != nil {
+							if err := os.Remove(fontFile); err != nil {
 								walk.MsgBox(mw, "Error", err.Error(), walk.MsgBoxOK|walk.MsgBoxIconError)
 								panic(err)
 							}
 
-							if err := ReplGlobalConf(config); err != nil {
+							if err := os.Rename(backupFile, fontFile); err != nil {
 								walk.MsgBox(mw, "Error", err.Error(), walk.MsgBoxOK|walk.MsgBoxIconError)
 								panic(err)
 							}
+
+							config.ClearUpFontsFolder()
+
+							// Delete Cache
+							os.RemoveAll(filepath.Join(os.Getenv("TEMP"), "fontconfig"))
 
 							walk.MsgBox(mw, "FontConfig", "done.", walk.MsgBoxIconInformation)
 						},
@@ -379,16 +225,21 @@ func main() {
 					PushButton{
 						Text: "Apply",
 						OnClicked: func() {
-							if !config.Customize {
-								config.Default()
+							// creates a backup of the font.conf if it does not already exist
+							backupFile := filepath.Join(config.Path, "game", "csgo", "panorama", "fonts", "fonts_backup.conf")
+
+							if exist, _ := FileExists(backupFile); !exist {
+								fontFile := filepath.Join(config.Path, "game", "csgo", "panorama", "fonts", "fonts.conf")
+								copyFile(fontFile, backupFile)
+								defaultButton.SetEnabled(true)
 							}
+
+							config.ClearUpFontsFolder()
+
+							font := fontslist[mw.cb.CurrentIndex()]
+							copyFile(filepath.Join(font.Dir, font.Filename), filepath.Join(config.Path, "game", "csgo", "panorama", "fonts", font.Filename))
 
 							if err := WriteFontsConf(config); err != nil {
-								walk.MsgBox(mw, "Error", err.Error(), walk.MsgBoxOK|walk.MsgBoxIconError)
-								panic(err)
-							}
-
-							if err := ReplGlobalConf(config); err != nil {
 								walk.MsgBox(mw, "Error", err.Error(), walk.MsgBoxOK|walk.MsgBoxIconError)
 								panic(err)
 							}
@@ -397,6 +248,9 @@ func main() {
 								walk.MsgBox(mw, "Error", err.Error(), walk.MsgBoxOK|walk.MsgBoxIconError)
 								panic(err)
 							}
+
+							// Delete Cache
+							os.RemoveAll(filepath.Join(os.Getenv("TEMP"), "fontconfig"))
 
 							walk.MsgBox(mw, "FontConfig", "done.", walk.MsgBoxIconInformation)
 						},
@@ -414,132 +268,19 @@ func main() {
 		panic(err)
 	}
 
-	DPI = mw.DPI()
-
-	if config.Font != "" {
-		LabelFontPreview.SetText(config.Font)
-	}
-
-	if config.Pixelsize != 0 {
-		NumberEditPixelSize.SetValue(float64(config.Pixelsize))
-	}
-
-	if config.Weight != 0 {
-		ComboBoxWeight.SetCurrentIndex(config.Weight)
-	}
-	if config.Customize && len(config.Fonts) != 0 {
-		// model = NewCustomFontModel()
-		CheckBoxCustomize.SetChecked(true)
-	}
-
-	mw.Run() // https://github.com/lxn/walk/issues/103#issuecomment-278243090
-
-	// cleanup
-	os.Remove(filepath.Join(mw.AppPath, "demo.htm"))
-}
-
-type CustomFontModel struct {
-	walk.TableModelBase
-	walk.SorterBase
-	sortColumn int
-	sortOrder  walk.SortOrder
-	Items      []FontStruct
-}
-
-func NewCustomFontModel() *CustomFontModel {
-	m := new(CustomFontModel)
-	m.ResetRows()
-	return m
-}
-
-// Called by the TableView from SetModel and every time the model publishes a
-// RowsReset event.
-func (m *CustomFontModel) RowCount() int {
-	return len(m.Items)
-}
-
-// Called by the TableView when it needs the text to display for a given cell.
-func (m *CustomFontModel) Value(row, col int) interface{} {
-	item := m.Items[row]
-
-	switch col {
-	case 0:
-		return item.ValveFont
-	case 1:
-		return item.ReplaceFont
-	case 2:
-		return item.Weight
-	case 3:
-		return item.Pixelsize
-	case 4:
-		return item.Dpi
-	case 5:
-		return item.PreferOutline
-	case 6:
-		return item.DoSubstitutions
-	case 7:
-		return item.BitmapMonospace
-	case 8:
-		return item.ForceAutohint
-	case 9:
-		return item.QtUseSubpixelPositioning
-	case 10:
-		return item.EmbeddedBitmap
-	}
-
-	panic("unexpected col")
-}
-
-// Called by the TableView to sort the model.
-func (m *CustomFontModel) Sort(col int, order walk.SortOrder) error {
-	m.sortColumn, m.sortOrder = col, order
-
-	sort.SliceStable(m.Items, func(i, j int) bool {
-		a, b := m.Items[i], m.Items[j]
-		c := func(ls bool) bool {
-			if m.sortOrder == walk.SortAscending {
-				return ls
-			}
-
-			return !ls
+	// selects the font from the config
+	mw.cb.SetCurrentIndex(0)
+	for i, v := range fontslist {
+		if v.Fontname == config.Font {
+			mw.cb.SetCurrentIndex(i)
+			break
 		}
+	}
 
-		switch m.sortColumn {
-		case 0:
-			return c(a.ValveFont < b.ValveFont)
-		case 1:
-			return c(a.ReplaceFont < b.ReplaceFont)
-		case 2:
-			return c(a.Weight < b.Weight)
-		case 3:
-			return c(a.Pixelsize < b.Pixelsize)
-		case 4:
-			return c(a.Dpi < b.Dpi)
-		case 5:
-			return a.PreferOutline != b.PreferOutline
-		case 6:
-			return a.DoSubstitutions != b.DoSubstitutions
-		case 7:
-			return a.BitmapMonospace != b.BitmapMonospace
-		case 8:
-			return a.ForceAutohint != b.ForceAutohint
-		case 9:
-			return a.QtUseSubpixelPositioning != b.QtUseSubpixelPositioning
-		case 10:
-			return a.EmbeddedBitmap != b.EmbeddedBitmap
+	// Activates the default button if there is also a backup
+	if exist, _ := FileExists(filepath.Join(config.Path, "game", "csgo", "panorama", "fonts", "fonts_backup.conf")); exist {
+		defaultButton.SetEnabled(true)
+	}
 
-		}
-		panic("unreachable")
-	})
-
-	return m.SorterBase.Sort(col, order)
-}
-
-func (m *CustomFontModel) ResetRows() {
-	m.Items = config.Fonts
-
-	// Notify TableView and other interested parties about the reset.
-	m.PublishRowsReset()
-
-	m.Sort(m.sortColumn, m.sortOrder)
+	mw.Run()
 }

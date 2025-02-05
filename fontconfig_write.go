@@ -9,46 +9,53 @@ import (
 	"path/filepath"
 )
 
-func boolToStr(value bool) string {
-	if value {
-		return "true"
-	}
-	return "false"
-}
-
-func intToStr(value int) string {
-	return fmt.Sprintf("%d", value)
-}
-
-func floatToStr(value float64) string {
-	return fmt.Sprintf("%.1f", value)
-}
-
 func WriteFontsConf(c *Config) error {
 	fontconfig := &Fontconfig{}
 
 	fontconfig.Dir = []xDir{
-		{Prefix: "default", Text: "../../csgo/panorama/fonts"},
+		{Prefix: "cwd", Text: "../../csgo/panorama/fonts"},
 		{Text: "WINDOWSFONTDIR"},
-		{Text: "C:/Windows/Fonts"},
-		{Text: "~/AppData/Local/Microsoft/Windows/Fonts"},
 		{Text: "~/.fonts"},
 		{Text: "/usr/share/fonts"},
 		{Text: "/usr/local/share/fonts"},
 		{Prefix: "xdg", Text: "fonts"},
 	}
 
-	fontconfig.Fontpattern = []string{
-		"Arial",
-		".uifont",
-		"notosans",
-		"notoserif",
-		"notomono-regular",
-	}
+	// fontconfig.Fontpattern = []string{
+	// 	"Arial",
+	// 	".uifont",
+	// 	"notosans",
+	// 	"notoserif",
+	// 	"notomono-regular",
+	// }
 
 	fontconfig.Cachedir = []string{
 		"WINDOWSTEMPDIR_FONTCONFIG_CACHE",
 		"~/.fontconfig",
+	}
+
+	targetMatch := xMatch{
+		Target: "pattern",
+		Edit: []xEdit{
+			{
+				Name:    "family",
+				Mode:    "assign",
+				Binding: "strong",
+				String:  config.Font,
+			},
+		},
+	}
+
+	if config.Pixelsize != 1.0 {
+		targetMatch.Edit = append(targetMatch.Edit, xEdit{
+			Name: "pixelsize",
+			Mode: "assign",
+			Times: &xTimes{
+				Name:   "pixelsize",
+				Double: fmt.Sprintf("%g", config.Pixelsize),
+			},
+		})
+
 	}
 
 	fontconfig.Match = []xMatch{
@@ -93,7 +100,8 @@ func WriteFontsConf(c *Config) error {
 					Name:    "weight",
 					Mode:    "assign",
 					Binding: "strong",
-					String:  "Regular",
+					// String:  "Regular",
+					Int: 90,
 				},
 			},
 		},
@@ -311,7 +319,7 @@ func WriteFontsConf(c *Config) error {
 				{
 					Name: "embeddedbitmap",
 					Mode: "assign",
-					Bool: boolToStr(c.EmbeddedBitmap),
+					Bool: "false",
 				},
 			},
 		},
@@ -322,7 +330,7 @@ func WriteFontsConf(c *Config) error {
 				{
 					Name: "prefer_outline",
 					Mode: "assign",
-					Bool: boolToStr(c.PreferOutline),
+					Bool: "true",
 				},
 			},
 		},
@@ -333,7 +341,7 @@ func WriteFontsConf(c *Config) error {
 				{
 					Name: "do_substitutions",
 					Mode: "assign",
-					Bool: boolToStr(c.DoSubstitutions),
+					Bool: "true",
 				},
 			},
 		},
@@ -344,7 +352,7 @@ func WriteFontsConf(c *Config) error {
 				{
 					Name: "bitmap_monospace",
 					Mode: "assign",
-					Bool: boolToStr(c.BitmapMonospace),
+					Bool: "false",
 				},
 			},
 		},
@@ -355,7 +363,7 @@ func WriteFontsConf(c *Config) error {
 				{
 					Name: "force_autohint",
 					Mode: "assign",
-					Bool: boolToStr(c.ForceAutohint),
+					Bool: "false",
 				},
 			},
 		},
@@ -366,7 +374,7 @@ func WriteFontsConf(c *Config) error {
 				{
 					Name:   "dpi",
 					Mode:   "assign",
-					Double: intToStr(c.Dpi),
+					Double: "96",
 				},
 			},
 		},
@@ -377,10 +385,12 @@ func WriteFontsConf(c *Config) error {
 				{
 					Name: "qt_use_subpixel_positioning",
 					Mode: "assign",
-					Bool: boolToStr(c.QtUseSubpixelPositioning),
+					Bool: "false",
 				},
 			},
 		},
+
+		targetMatch,
 	}
 
 	fontconfig.Selectfont = &xSelectfont{
@@ -405,9 +415,8 @@ func WriteFontsConf(c *Config) error {
 	if exist, _ := FileExists(csgofontsDir); !exist {
 		os.MkdirAll(csgofontsDir, os.ModePerm)
 	}
-	err = os.WriteFile(filepath.Join(csgofontsDir, "fonts.conf"), append(header, bytes...), 0644)
+	err = os.WriteFile(filepath.Join(csgofontsDir, "fonts.conf"), append(header, bytes...), 0o644)
 	if err == nil {
-		fmt.Println(filepath.Join(csgofontsDir, "fonts.conf"), "saved")
 		return nil
 	} else {
 		return err

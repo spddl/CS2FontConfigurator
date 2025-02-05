@@ -10,8 +10,8 @@ type Fontconfig struct {
 	Dir         []xDir       `xml:"dir"`
 	Fontpattern []string     `xml:"fontpattern"`
 	Cachedir    []string     `xml:"cachedir"`
-	Match       []xMatch     `xml:"match"`
 	Selectfont  *xSelectfont `xml:"selectfont"`
+	Match       []xMatch     `xml:"match"`
 	Include     string       `xml:"include,omitempty"`
 }
 
@@ -64,6 +64,7 @@ type xEdit struct {
 	Binding string  `xml:"binding,attr,omitempty"`
 	Const   string  `xml:"const,omitempty"`
 	String  string  `xml:"string,omitempty"`
+	Int     int     `xml:"int,omitempty"`
 	If      *xIf    `xml:"if"`
 	Times   *xTimes `xml:"times"`
 	Minus   *xMinus `xml:"minus"`

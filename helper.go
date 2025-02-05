@@ -1,15 +1,14 @@
 package main
 
 import (
-	"bytes"
-	"fmt"
+	"log"
 	"os"
-	"path"
 	"path/filepath"
-	"strings"
+	"slices"
 
-	"github.com/ConradIrwin/font/sfnt"
 	"github.com/andygrunwald/vdf"
+	"golang.org/x/image/font/opentype"
+	"golang.org/x/image/font/sfnt"
 	"golang.org/x/sys/windows/registry"
 )
 
@@ -54,16 +53,6 @@ func CSPath() (string, error) {
 }
 
 // https://golang.org/src/path/path.go?s=4371:4399#L158
-func FileAndExt(path string) (string, string) {
-	for i := len(path) - 1; i >= 0 && path[i] != '/'; i-- {
-		if path[i] == '.' {
-			return path[:i], path[i:]
-		}
-	}
-	return "", ""
-}
-
-// https://golang.org/src/path/path.go?s=4371:4399#L158
 func FileExists(path string) (bool, error) {
 	_, err := os.Stat(path)
 	if err == nil {
@@ -75,134 +64,6 @@ func FileExists(path string) (bool, error) {
 	return true, err
 }
 
-func IndexOf(word string, data []string) int {
-	for k, v := range data {
-		if word == v {
-			return k
-		}
-	}
-	return -1
-}
-
-// FontData describes a font file and the various metadata associated with it.
-type FontData struct { // https://github.com/ConradIrwin/font/blob/d797009a8098ca7f6c36a29d0c132a3d39bc4212/sfnt/table_name.go#L77
-	Name     string
-	Family   string
-	Location string
-	FileName string
-	Metadata map[sfnt.NameID]string
-	Data     []byte
-}
-
-// FontExtensions is a list of file extensions that denote fonts.
-// Only files ending with these extensions will be installed.
-var FontExtensions = map[string]bool{
-	".otf": true,
-	".ttf": true,
-}
-
-// NewFontData creates a new FontData struct.
-// fileName is the font's file name, and data is a byte slice containing the font file data.
-// It returns a FontData struct describing the font, or an error.
-func NewFontData(location, fileName string, data []byte) (fontData *FontData, err error) {
-	if _, ok := FontExtensions[path.Ext(fileName)]; !ok {
-		return nil, fmt.Errorf("Not a font: %v", fileName)
-	}
-
-	fontData = &FontData{
-		FileName: fileName,
-		Metadata: make(map[sfnt.NameID]string),
-		Data:     data,
-		Location: location,
-	}
-
-	font, err := sfnt.Parse(bytes.NewReader(fontData.Data))
-	if err != nil {
-		return nil, err
-	}
-
-	if font.HasTable(sfnt.TagName) == false {
-		return nil, fmt.Errorf("Font %v has no name table", fileName)
-	}
-
-	nameTable, err := font.NameTable()
-	if err != nil {
-		return nil, err
-	}
-
-	for _, nameEntry := range nameTable.List() {
-		fontData.Metadata[nameEntry.NameID] = nameEntry.String()
-	}
-
-	fontData.Name = strings.ReplaceAll(fontData.Metadata[sfnt.NameFull], "\u0000", "")
-	fontData.Family = fontData.Metadata[sfnt.NamePreferredFamily]
-	if fontData.Family == "" {
-		if v, ok := fontData.Metadata[sfnt.NameFontFamily]; ok {
-			fontData.Family = v
-		} else {
-			fmt.Printf("Font %v has no font family!\n", fontData.Name)
-		}
-	}
-
-	if fontData.Name == "" {
-		fmt.Printf("Font %v has no name! Using file name instead.\n", fileName)
-		fontData.Name = fileName
-	}
-
-	return
-}
-
-type LocalWindowsFonts struct {
-	Folder   string
-	Filename string
-}
-
-func MustReadDir(root string) []*FontData { // https://stackoverflow.com/questions/14668850/list-directory-in-go/49196644#49196644
-	var files []*FontData
-
-	f, err := os.Open(root)
-	if err != nil {
-		panic(err)
-	}
-	fileInfo, err := f.Readdir(-1)
-	f.Close()
-	if err != nil {
-		panic(err)
-	}
-
-	for _, file := range fileInfo {
-		filename := file.Name()
-
-		if _, ok := FontExtensions[path.Ext(filename)]; ok {
-			// files = append(files, name)
-			// log.Println(filepath.Join(root, filename))
-			data, err := os.ReadFile(filepath.Join(root, filename))
-			if err != nil {
-				continue
-			}
-
-			fontData, err := NewFontData(root, filename, data)
-			if err != nil {
-				continue
-			}
-
-			files = append(files, fontData)
-
-		}
-	}
-
-	return files
-}
-
-func contains(s []string, str string) bool {
-	for _, v := range s {
-		if v == str {
-			return true
-		}
-	}
-	return false
-}
-
 func GetVDFKey(data map[string]interface{}, key string) map[string]interface{} {
 	if val, ok := data[key]; ok {
 		if val, ok := val.(map[string]interface{}); ok {
@@ -210,4 +71,90 @@ func GetVDFKey(data map[string]interface{}, key string) map[string]interface{} {
 		}
 	}
 	return nil
+}
+
+func (c *Config) ClearUpFontsFolder() {
+	panorama_fonts := filepath.Join(c.Path, "game", "csgo", "panorama", "fonts")
+	entries, err := os.ReadDir(panorama_fonts)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	valveFonts := []string{
+		"notomono-regular.ttf",
+		"notosans-bold.ttf",
+		"notosans-bolditalic.ttf",
+		"notosans-italic.ttf",
+		"notosans-regular.ttf",
+		"notosansjp-bold.ttf",
+		"notosansjp-light.ttf",
+		"notosansjp-regular.ttf",
+		"notosanskr-bold.ttf",
+		"notosanskr-light.ttf",
+		"notosanskr-regular.ttf",
+		"notosanssc-bold.ttf",
+		"notosanssc-light.ttf",
+		"notosanssc-regular.ttf",
+		"notosanssymbols-regular.ttf",
+		"notosanstc-bold.ttf",
+		"notosanstc-light.ttf",
+		"notosanstc-regular.ttf",
+		"notosansthai-bold.ttf",
+		"notosansthai-light.ttf",
+		"notosansthai-regular.ttf",
+		"notoserif-bold.ttf",
+		"notoserif-boliitalic.ttf",
+		"notoserif-italic.ttf",
+		"notoserif-regular.ttf",
+	}
+
+	for _, e := range entries {
+		filename := e.Name()
+		switch filepath.Ext(filename) {
+		case ".ttf", ".otf":
+			if !slices.Contains(valveFonts, filename) {
+				if err := os.Remove(filepath.Join(panorama_fonts, filename)); err != nil {
+					log.Println(err)
+				}
+			}
+		case ".conf", ".uifont":
+			// ignore
+		case ".zip", ".7z", ".rar":
+			// ignore
+		default:
+			if err := os.Remove(filepath.Join(panorama_fonts, filename)); err != nil {
+				log.Println(err)
+			}
+		}
+	}
+}
+
+func copyFile(in, out string) {
+	data, err := os.ReadFile(in)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if err = os.WriteFile(out, data, 0o644); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func GetFontName(fontfilename string) string {
+	data, err := os.ReadFile(fontfilename)
+	if err != nil {
+		log.Fatal(err)
+	}
+	f, err := opentype.Parse(data)
+	if err != nil {
+		// Windows Fallback
+		return GetFontResourceInfo(fontfilename)
+	} else {
+		fontname, err := f.Name(nil, sfnt.NameIDFamily)
+		if err != nil {
+			log.Fatal(err)
+		}
+		return fontname
+	}
+
 }

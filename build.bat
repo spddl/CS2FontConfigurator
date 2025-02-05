@@ -2,13 +2,11 @@
 
 SET GOOS=windows
 SET GOARCH=amd64
-rem for %%I in (.) do set "filename=%%~nxI"
 set filename=CS2FontConfigurator
 
 :loop
 CLS
 
-@REM gocritic check -enable="#performance" ./...
 gocritic check -enableAll -disable="#experimental,#opinionated,#commentedOutCode" ./...
 
 IF exist %filename%.exe (
@@ -20,7 +18,6 @@ IF exist %filename%.exe (
 rem rsrc.exe -manifest CS2FontConfigurator.exe.manifest -ico icon.ico
 
 :: Build https://golang.org/cmd/go/
-:: go build -v -ldflags="-w -s" -o %filename%.exe
 go build -buildvcs=false -ldflags="-w -s -H windowsgui" -o %filename%.exe
 go build -buildvcs=false -o %filename%_debug.exe
 
@@ -38,7 +35,6 @@ IF %diffSize% EQU 0 (
 )
 
 :: Run
-@REM IF %ERRORLEVEL% EQU 0 start /B /wait build/%filename%.exe
 IF %ERRORLEVEL% EQU 0 %filename%.exe
 
 PAUSE
