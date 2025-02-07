@@ -78,7 +78,7 @@ func main() {
 			}
 
 			fontslist = append(fontslist, &Fontslist{
-				Name:     name,
+				Name:     fmt.Sprintf("%s (%s)", fontname, filename),
 				Dir:      dir,
 				Fontname: fontname,
 				Filename: filename,
