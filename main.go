@@ -77,14 +77,6 @@ func main() {
 				continue
 			}
 
-			var name string
-			before, _, found := strings.Cut(fontname, " & ")
-			if found {
-				name = fmt.Sprintf("%s... (%s)", before, filename)
-			} else {
-				name = fmt.Sprintf("%s (%s)", fontname, filename)
-			}
-
 			fontslist = append(fontslist, &Fontslist{
 				Name:     name,
 				Dir:      dir,
