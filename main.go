@@ -55,6 +55,7 @@ func main() {
 
 	fontslist = []*Fontslist{}
 	for _, dir := range []string{
+		".",
 		"C:\\Windows\\Fonts",
 		filepath.Join(os.Getenv("USERPROFILE"), "AppData", "Local", "Microsoft", "Windows", "Fonts"),
 	} {
