@@ -61,7 +61,8 @@ func main() {
 
 		entries, err := os.ReadDir(dir)
 		if err != nil {
-			log.Fatal(err)
+			log.Println(err)
+			continue
 		}
 
 		for _, e := range entries {
