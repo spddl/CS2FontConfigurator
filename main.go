@@ -94,10 +94,12 @@ func main() {
 		return fontslist[i].Filename < fontslist[j].Filename
 	})
 
+	// reduces fonts that are installed for the user and for the computer
 	fontslist = slices.CompactFunc(fontslist, func(b *Fontslist, a *Fontslist) bool {
 		return a.Name == b.Name
 	})
 
+	// creates the index for the combo box
 	for i := range fontslist {
 		fontslist[i].Id = i
 	}
@@ -150,6 +152,7 @@ func main() {
 							if err != nil {
 								log.Println(err)
 							}
+
 							testfont.SetFont(walkfont)
 						},
 					},
