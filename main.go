@@ -140,10 +140,10 @@ func main() {
 							config.FontFile = font.Filename
 
 							var style walk.FontStyle
-							if strings.Contains(strings.ToLower(font.Fontname), "bold") || strings.Contains(strings.ToLower(font.Filename), "bold") {
+							if strings.Contains(strings.ToLower(font.Name), "bold") {
 								style |= walk.FontBold
 							}
-							if strings.Contains(strings.ToLower(font.Fontname), "italic") || strings.Contains(strings.ToLower(font.Filename), "italic") {
+							if strings.Contains(strings.ToLower(font.Name), "italic") {
 								style |= walk.FontItalic
 							}
 							walkfont, err := walk.NewFont(font.Fontname, 20, style)
