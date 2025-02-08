@@ -88,7 +88,10 @@ func main() {
 	}
 
 	sort.Slice(fontslist, func(i, j int) bool {
-		return fontslist[i].Fontname < fontslist[j].Fontname
+		if fontslist[i].Fontname != fontslist[j].Fontname {
+			return fontslist[i].Fontname < fontslist[j].Fontname
+		}
+		return fontslist[i].Filename < fontslist[j].Filename
 	})
 
 	fontslist = slices.CompactFunc(fontslist, func(b *Fontslist, a *Fontslist) bool {
